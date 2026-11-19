@@ -1,9 +1,17 @@
 
 import 'package:material_ui/material_ui.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:intl/intl.dart';
 import 'covid_api.dart';
+import 'notification_service.dart';
 
-void main() {
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  if (!kIsWeb) {
+    await iniciarNotificaciones();
+  }
+
   runApp(const CovidApp());
 }
 
@@ -48,7 +56,7 @@ class _CovidHomePageState extends State<CovidHomePage> {
     'USA',
   ];
 
-  // Consultar los datos de COVID-19
+  // Consultar datos de COVID-19
   Future<void> buscarDatos() async {
     setState(() {
       cargando = true;
@@ -163,6 +171,7 @@ class _CovidHomePageState extends State<CovidHomePage> {
                 style: const TextStyle(color: Colors.red),
               ),
 
+            // Mostrar los resultados
             if (datosCovid != null) ...[
               const SizedBox(height: 10),
 
@@ -199,6 +208,22 @@ class _CovidHomePageState extends State<CovidHomePage> {
                   color: Colors.grey,
                 ),
               ),
+
+              // Botón de notificación para Android
+              if (!kIsWeb) ...[
+                const SizedBox(height: 20),
+
+                ElevatedButton.icon(
+                  onPressed: () {
+                    mostrarNotificacion(
+                      datosCovid!['country'],
+                      datosCovid!['cases'],
+                    );
+                  },
+                  icon: const Icon(Icons.notifications),
+                  label: const Text('Enviar notificación'),
+                ),
+              ],
             ],
           ],
         ),
