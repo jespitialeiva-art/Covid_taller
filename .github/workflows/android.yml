@@ -19,7 +19,7 @@ jobs:
           java-version: '17'
 
       - name: Configurar Android
-        uses: android-actions/setup-android@v3
+        uses: android-actions/setup-android@v4
 
       - name: Instalar SDK Android 37
         run: sdkmanager "platforms;android-37" "build-tools;36.0.0"
