@@ -2,7 +2,9 @@
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:intl/intl.dart';
+
 import 'covid_api.dart';
+import 'covid_data.dart';
 import 'notification_service.dart';
 
 Future<void> main() async {
@@ -43,7 +45,7 @@ class CovidHomePage extends StatefulWidget {
 
 class _CovidHomePageState extends State<CovidHomePage> {
   String paisSeleccionado = 'Colombia';
-  Map<String, dynamic>? datosCovid;
+  CovidData? datosCovid;
   String mensaje = '';
   bool cargando = false;
 
@@ -56,7 +58,7 @@ class _CovidHomePageState extends State<CovidHomePage> {
     'USA',
   ];
 
-  // Consultar datos de COVID-19
+  // Consultar la API
   Future<void> buscarDatos() async {
     setState(() {
       cargando = true;
@@ -65,7 +67,7 @@ class _CovidHomePageState extends State<CovidHomePage> {
     });
 
     try {
-      final datos = await consultarCovid(paisSeleccionado);
+      final datos = await consultarCovidModelo(paisSeleccionado);
 
       if (!mounted) return;
 
@@ -76,7 +78,7 @@ class _CovidHomePageState extends State<CovidHomePage> {
       if (!mounted) return;
 
       setState(() {
-        mensaje = 'Error al consultar los datos';
+        mensaje = 'Error al consultar los datos. Revisa tu internet.';
       });
     } finally {
       if (mounted) {
@@ -159,24 +161,34 @@ class _CovidHomePageState extends State<CovidHomePage> {
 
             const SizedBox(height: 20),
 
+            // Mostrar carga
             if (cargando)
               const Center(
                 child: CircularProgressIndicator(),
               ),
 
-            if (mensaje.isNotEmpty)
+            // Mostrar error
+            if (mensaje.isNotEmpty) ...[
               Text(
                 mensaje,
                 textAlign: TextAlign.center,
                 style: const TextStyle(color: Colors.red),
               ),
 
-            // Mostrar los resultados
+              const SizedBox(height: 10),
+
+              ElevatedButton(
+                onPressed: buscarDatos,
+                child: const Text('Reintentar'),
+              ),
+            ],
+
+            // Mostrar estadísticas
             if (datosCovid != null) ...[
               const SizedBox(height: 10),
 
               Text(
-                'País: ${datosCovid!['country']}',
+                'País: ${datosCovid!.country}',
                 style: const TextStyle(
                   fontSize: 20,
                   fontWeight: FontWeight.bold,
@@ -185,17 +197,23 @@ class _CovidHomePageState extends State<CovidHomePage> {
 
               const SizedBox(height: 15),
 
-              Text('Casos: ${datosCovid!['cases']}'),
-              Text('Muertes: ${datosCovid!['deaths']}'),
-              Text('Recuperados: ${datosCovid!['recovered']}'),
+              Text('Casos acumulados: ${datosCovid!.cases}'),
+              Text('Casos del día: ${datosCovid!.todayCases}'),
+
+              const SizedBox(height: 10),
+
+              Text('Muertes acumuladas: ${datosCovid!.deaths}'),
+              Text('Muertes del día: ${datosCovid!.todayDeaths}'),
+
+              const SizedBox(height: 10),
+
+              Text('Recuperados: ${datosCovid!.recovered}'),
 
               const SizedBox(height: 15),
 
               Text(
                 'Actualizado: ${DateFormat('dd/MM/yyyy HH:mm').format(
-                  DateTime.fromMillisecondsSinceEpoch(
-                    datosCovid!['updated'],
-                  ).toLocal(),
+                  datosCovid!.updated.toLocal(),
                 )}',
               ),
 
@@ -209,15 +227,15 @@ class _CovidHomePageState extends State<CovidHomePage> {
                 ),
               ),
 
-              // Botón de notificación para Android
+              // Notificaciones en Android
               if (!kIsWeb) ...[
                 const SizedBox(height: 20),
 
                 ElevatedButton.icon(
                   onPressed: () {
                     mostrarNotificacion(
-                      datosCovid!['country'],
-                      datosCovid!['cases'],
+                      datosCovid!.country,
+                      datosCovid!.cases,
                     );
                   },
                   icon: const Icon(Icons.notifications),
