@@ -1,4 +1,6 @@
+
 import 'package:material_ui/material_ui.dart';
+import 'package:intl/intl.dart';
 import 'covid_api.dart';
 
 void main() {
@@ -34,7 +36,8 @@ class CovidHomePage extends StatefulWidget {
 class _CovidHomePageState extends State<CovidHomePage> {
   String paisSeleccionado = 'Colombia';
   Map<String, dynamic>? datosCovid;
-String mensaje = '';
+  String mensaje = '';
+  bool cargando = false;
 
   final List<String> paises = [
     'Colombia',
@@ -45,21 +48,36 @@ String mensaje = '';
     'USA',
   ];
 
+  // Consultar los datos de COVID-19
   Future<void> buscarDatos() async {
-  try {
-    final datos = await consultarCovid(paisSeleccionado);
-
     setState(() {
-      datosCovid = datos;
+      cargando = true;
       mensaje = '';
-    });
-  } catch (e) {
-    setState(() {
       datosCovid = null;
-      mensaje = 'Error al consultar los datos';
     });
+
+    try {
+      final datos = await consultarCovid(paisSeleccionado);
+
+      if (!mounted) return;
+
+      setState(() {
+        datosCovid = datos;
+      });
+    } catch (e) {
+      if (!mounted) return;
+
+      setState(() {
+        mensaje = 'Error al consultar los datos';
+      });
+    } finally {
+      if (mounted) {
+        setState(() {
+          cargando = false;
+        });
+      }
+    }
   }
-}
 
   @override
   Widget build(BuildContext context) {
@@ -69,7 +87,8 @@ String mensaje = '';
         backgroundColor: Colors.blue.shade100,
         centerTitle: true,
       ),
-      body: Padding(
+
+      body: SingleChildScrollView(
         padding: const EdgeInsets.all(20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -115,6 +134,8 @@ String mensaje = '';
                 if (valor != null) {
                   setState(() {
                     paisSeleccionado = valor;
+                    datosCovid = null;
+                    mensaje = '';
                   });
                 }
               },
@@ -122,23 +143,63 @@ String mensaje = '';
 
             const SizedBox(height: 25),
 
-ElevatedButton.icon(
-  onPressed: buscarDatos,
-  icon: const Icon(Icons.search),
-  label: const Text('Consultar estadísticas'),
-),
+            ElevatedButton.icon(
+              onPressed: cargando ? null : buscarDatos,
+              icon: const Icon(Icons.search),
+              label: const Text('Consultar estadísticas'),
+            ),
 
             const SizedBox(height: 20),
 
-           if (mensaje.isNotEmpty)
-  Text(mensaje),
+            if (cargando)
+              const Center(
+                child: CircularProgressIndicator(),
+              ),
 
-if (datosCovid != null) ...[
-  Text('País: ${datosCovid!['country']}'),
-  Text('Casos: ${datosCovid!['cases']}'),
-  Text('Muertes: ${datosCovid!['deaths']}'),
-  Text('Recuperados: ${datosCovid!['recovered']}'),
-],
+            if (mensaje.isNotEmpty)
+              Text(
+                mensaje,
+                textAlign: TextAlign.center,
+                style: const TextStyle(color: Colors.red),
+              ),
+
+            if (datosCovid != null) ...[
+              const SizedBox(height: 10),
+
+              Text(
+                'País: ${datosCovid!['country']}',
+                style: const TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+
+              const SizedBox(height: 15),
+
+              Text('Casos: ${datosCovid!['cases']}'),
+              Text('Muertes: ${datosCovid!['deaths']}'),
+              Text('Recuperados: ${datosCovid!['recovered']}'),
+
+              const SizedBox(height: 15),
+
+              Text(
+                'Actualizado: ${DateFormat('dd/MM/yyyy HH:mm').format(
+                  DateTime.fromMillisecondsSinceEpoch(
+                    datosCovid!['updated'],
+                  ).toLocal(),
+                )}',
+              ),
+
+              const SizedBox(height: 10),
+
+              const Text(
+                'Nota: los datos pueden ser históricos.',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: Colors.grey,
+                ),
+              ),
+            ],
           ],
         ),
       ),
